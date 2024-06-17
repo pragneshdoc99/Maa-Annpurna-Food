@@ -1,0 +1,40 @@
+/* src/components/ScratchCardDialog.css */
+.scratch-card-dialog {
+  background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+  border-radius: 20px;
+  max-width: 450px; /* Increased max width */
+  margin: auto;
+}
+
+.scratch-card-title {
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+  font-size: 26px; /* Increased font size */
+  text-align: center;
+  color: #ffffff;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  padding: 15px; /* Increased padding */
+  border-radius: 20px 20px 0 0;
+}
+
+.scratch-card-content {
+  background-color: #fff8e1;
+  padding: 25px; /* Increased padding */
+  text-align: center;
+  border-radius: 0 0 20px 20px;
+}
+
+.scratch-card-result {
+  padding: 27px; /* Increased padding */
+  font-size: 27px; /* Increased font size */
+  font-weight: bold;
+  color: #4caf50;
+  text-align: center;
+  border: 3px dashed #4caf50; /* Increased border size */
+  border-radius: 15px;
+  background-color: #ffffff;
+  transition: transform 0.2s ease-in-out;
+}
+
+.scratch-card-result:hover {
+  transform: scale(1.05);
+}

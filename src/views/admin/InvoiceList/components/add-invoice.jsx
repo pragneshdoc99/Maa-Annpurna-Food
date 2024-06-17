@@ -204,8 +204,15 @@ const AddInvoice = ({
   let [transferObj, setTransferObj] = useState({});
   let [finalList, setFinalList] = useState([]);
   const [totalCost, setTotalCost] = useState(0);
+  const [disTotalCost, setDisTotalCost] = useState(0);
+  const [discountCost, setDiscountCost] = useState(0);
   const [openModal, setModalOpen] = React.useState(false);
   const [isPaidBill, setIsPaidBill] = React.useState(false);
+
+  let [userScratchedDocID, setUserScratchedDocID] = useState('');
+  let [userScratchedData, setUserScratchedData] = useState({});
+  let [userDiscountPersent, setUserDiscountPersent] = useState(0);
+  let [isScratchedCard, setIsScratchedCard] = useState(false);
 
 
 
@@ -220,10 +227,13 @@ const AddInvoice = ({
 
   useEffect(() => {
 
-    // console.log('orderDetailsData :: ', orderDetails);
+    console.log('orderDetailsData :: ', orderDetails);
 
     setBasicDetails(orderDetails);
-    setTotalCost(orderDetails.orderTotalAmmount.toFixed(2))
+    setDisTotalCost(orderDetails.orderTotalAmmount.toFixed(2));
+    if (!isScratchedCard) {
+      setTotalCost(orderDetails.orderTotalAmmount.toFixed(2));
+    }
 
 
     tempDataArray = []
@@ -243,12 +253,50 @@ const AddInvoice = ({
 
 
     if (currentUserId) {
+      getUserScratchData();
       checkInvoiceData();
     }
 
 
 
   }, []);
+
+  const getUserScratchData = () => {
+
+    // console.log('orderDetailsData :: ', orderDetails)
+
+    let firestoreData = firebase.firestore();
+    let docRef = firestoreData.collection("user-scratched-offer-list");
+    let query = docRef.where('clientContact', '==', orderDetails.clientContact).where('order_date', '!=', orderDetails.order_date).where('isCardUsed', '==', false);
+    query.get().then((querySnapshot) => {
+      if (querySnapshot.empty) {
+        console.log('No matching documents.');
+
+      } else {
+        console.log('Matching documents found:');
+        querySnapshot.forEach((doc) => {
+          // console.log(doc.id, '=>', doc.data());
+          console.log("doc :: ", doc);
+          let docData = doc.data();
+          setUserScratchedDocID(doc.id)
+          setUserScratchedData(docData);
+          setUserDiscountPersent(docData.discountPersent);
+          setIsScratchedCard(docData.isScratched);
+
+          let tmpDiscountVal = ((orderDetails.orderTotalAmmount) * (docData.discountPersent / 100))
+          setDiscountCost(tmpDiscountVal);
+
+          if (docData.isScratched) {
+            let finalAmmount = (orderDetails.orderTotalAmmount - tmpDiscountVal)
+            setTotalCost(finalAmmount.toFixed(2));
+          }
+        });
+      }
+    }).catch((error) => {
+      console.error('Error retrieving documents: ', error);
+    });
+
+  }
 
   const checkInvoiceData = async () => {
     try {
@@ -257,7 +305,7 @@ const AddInvoice = ({
       let doc = await docRef.get();
 
       if (doc.exists) {
-        // console.log("HERE :: ", doc.data());
+        console.log("HERE IN :: ", doc.data());
         let invoiceObj = doc.data();
 
         //----INVOICE COUNT ---------
@@ -269,6 +317,10 @@ const AddInvoice = ({
 
         setPaymentArray(finalObjData)
         setIsPaidBill(invoiceObj.isPaidBill)
+
+        setUserDiscountPersent(invoiceObj.discountPersent)
+        setDiscountCost(invoiceObj.discountAmmount)
+        setTotalCost(invoiceObj.orderTotalAmmount)
 
 
       } else {
@@ -373,29 +425,76 @@ const AddInvoice = ({
   };
 
   const commonSaveDataFun = (paymentArray) => {
+    let detailObj = {};
 
-    const detailObj = {
-      userId: basicDetails.userId,
-      userEmail: basicDetails.userEmail,
-      clientName: basicDetails.clientName,
-      clientContact: basicDetails.clientContact,
-      tableName: basicDetails.tableName,
-      order_date: new Date(basicDetails.order_date).getTime(),
-      itemList: basicDetails.itemList,
-      orderTotalAmmount: basicDetails.orderTotalAmmount,
-      paymentDetails: paymentArray,
-      invoiceNo: tempInvoiceCount.toString(),
-      isPaidBill: true,
+    if (isScratchedCard) {
+      detailObj = {
+        userId: basicDetails.userId,
+        userEmail: basicDetails.userEmail,
+        clientName: basicDetails.clientName,
+        clientContact: basicDetails.clientContact,
+        tableName: basicDetails.tableName,
+        order_date: new Date(basicDetails.order_date).getTime(),
+        itemList: basicDetails.itemList,
+        orderTotalAmmount: totalCost,
+        fullOrderAmmount: disTotalCost,
+        discountPersent: userDiscountPersent,
+        discountAmmount: discountCost,
+        paymentDetails: paymentArray,
+        invoiceNo: tempInvoiceCount.toString(),
+        isPaidBill: true,
+      };
 
-    };
+    } else {
 
-    // console.log("detailObj :: ", detailObj);
+      if (userDiscountPersent) {
+
+        detailObj = {
+          userId: basicDetails.userId,
+          userEmail: basicDetails.userEmail,
+          clientName: basicDetails.clientName,
+          clientContact: basicDetails.clientContact,
+          tableName: basicDetails.tableName,
+          order_date: new Date(basicDetails.order_date).getTime(),
+          itemList: basicDetails.itemList,
+          orderTotalAmmount: totalCost,
+          fullOrderAmmount: disTotalCost,
+          discountPersent: userDiscountPersent,
+          discountAmmount: discountCost,
+          paymentDetails: paymentArray,
+          invoiceNo: tempInvoiceCount.toString(),
+          isPaidBill: true,
+        };
+
+      } else {
+
+        detailObj = {
+          userId: basicDetails.userId,
+          userEmail: basicDetails.userEmail,
+          clientName: basicDetails.clientName,
+          clientContact: basicDetails.clientContact,
+          tableName: basicDetails.tableName,
+          order_date: new Date(basicDetails.order_date).getTime(),
+          itemList: basicDetails.itemList,
+          orderTotalAmmount: basicDetails.orderTotalAmmount,
+          paymentDetails: paymentArray,
+          invoiceNo: tempInvoiceCount.toString(),
+          isPaidBill: true,
+        };
+      }
+
+    }
+
+
+    console.log("detailObj :: ", detailObj);
 
 
     saveInvoiceDataFun(detailObj)
   }
 
   const saveInvoiceDataFun = async (detailObj) => {
+
+    // console.log("currentUserId :: ", currentUserId);
 
     let firestoreData = firebase.firestore();
     let docRef = firestoreData.collection("invoice-list").doc(currentUserId);
@@ -405,7 +504,7 @@ const AddInvoice = ({
 
       commonUpdateInvoiceData(detailObj)
     } else {
-      // console.log("NEW USER");
+      console.log("NEW USER");
 
       orderCountDoc = 'II7rySKg8MJRPpZCsrm9';
 
@@ -427,7 +526,23 @@ const AddInvoice = ({
             };
             let tempDb = databaseFld.collection('table-list');
             tempDb = tempDb.doc(doc.id).update(setTempObj).then(function (docRef) {
-              commonUpdateInvoiceData(detailObj)
+
+              if (isScratchedCard) {
+
+                let setScarchObj = {
+                  isCardUsed: true
+                };
+
+                let tempScarchDb = databaseFld.collection('user-scratched-offer-list');
+                tempScarchDb = tempScarchDb.doc(userScratchedDocID).update(setScarchObj).then(function (docRef) {
+                  commonUpdateInvoiceData(detailObj)
+                })
+
+
+              } else {
+
+                commonUpdateInvoiceData(detailObj)
+              }
             })
 
           })
@@ -577,6 +692,32 @@ const AddInvoice = ({
                               </StyledTableRow>
                             ))}
                           </TableBody>
+
+                          {disTotalCost &&
+                            <TableHead>
+                              <TableRow>
+                                <StyledTableCell align="left">Total</StyledTableCell>
+                                <StyledTableCell align="left"></StyledTableCell>
+                                <StyledTableCell align="left"></StyledTableCell>
+                                <StyledTableCell align="left"></StyledTableCell>
+                                <StyledTableCell align="left"></StyledTableCell>
+                                <StyledTableCell align="right">{disTotalCost}</StyledTableCell>
+                              </TableRow>
+                            </TableHead>
+                          }
+                          {userDiscountPersent &&
+                            <TableHead>
+                              <TableRow>
+                                <StyledTableCell align="left">Discount</StyledTableCell>
+                                <StyledTableCell align="left"></StyledTableCell>
+                                <StyledTableCell align="left"></StyledTableCell>
+                                <StyledTableCell align="left"></StyledTableCell>
+                                <StyledTableCell align="left">{userDiscountPersent + "%"}</StyledTableCell>
+                                <StyledTableCell align="right">{discountCost}</StyledTableCell>
+                              </TableRow>
+                            </TableHead>
+                          }
+
                           <TableHead>
                             <TableRow>
                               <StyledTableCell align="left">Total Ammount</StyledTableCell>

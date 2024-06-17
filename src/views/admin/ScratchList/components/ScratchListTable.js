@@ -37,11 +37,10 @@ import Skeleton from "@material-ui/lab/Skeleton";
 import TableFooter from "@material-ui/core/TableFooter";
 
 import NoData from "../../../../assets/img/NoData.jpg";
-import AddInvoice from "./add-invoice";
+import AddScratch from "./add-scratch";
 import { SearchIcon } from "@chakra-ui/icons";
 import firebase from '../../../../firebase';
 import ConfirmDialog from "../../ConfirmDialog";
-import moment from "moment";
 
 const useStyles = makeStyles((theme) => ({
   pagination: {
@@ -58,7 +57,7 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-export default function InvoiceListTable(props) {
+export default function ScratchListTable(props) {
 
   const classes = useStyles();
 
@@ -69,7 +68,6 @@ export default function InvoiceListTable(props) {
   });
 
   const [myTempArray, setmyTempArray] = useState([]);
-
   const [myArray, setmyArray] = useState([]);
 
   const [detailForm, setDetailForm] = useState(false);
@@ -93,7 +91,7 @@ export default function InvoiceListTable(props) {
   const fetchUserData = () => {
 
     const database = firebase.firestore();
-    let tempDb = database.collection('order-list');
+    let tempDb = database.collection('scratch-list');
     tempDb.get().then(function (dataSnap) {
       // console.log('GET DATA :: ', dataSnap);
       let tempObj = [];
@@ -102,10 +100,8 @@ export default function InvoiceListTable(props) {
         tempObj.push(docData);
       });
       // console.log('DOC Data again :: ', tempObj);
-      const finalData = tempObj.sort((a, b) => b.order_date - a.order_date);
-
-      setmyTempArray(finalData)
-      setmyArray(finalData);
+      setmyTempArray(tempObj)
+      setmyArray(tempObj);
       setLoader(false);
 
       if (tempObj.length <= 0) {
@@ -128,16 +124,11 @@ export default function InvoiceListTable(props) {
   }))(Tooltip);
 
   //-----------------EDIT --------------------
-  const editThisFeed = (clientName, itemArr) => {
-
-    // console.log("clientName :: ", clientName)
-    // console.log("itemArr :: ", itemArr)
+  const editThisFeed = (discountPersent, itemArr) => {
     try {
       const databaseFld = firebase.firestore();
-      let docRef = databaseFld.collection("order-list")
-      docRef = docRef.where("clientName", "==", clientName);
-      docRef = docRef.where("clientContact", "==", itemArr.clientContact);
-      docRef = docRef.where("order_date", "==", itemArr.order_date);
+      let docRef = databaseFld.collection("scratch-list")
+      docRef = docRef.where("discountPersent", "==", discountPersent);
       docRef.get().then((querySnapshot) => {
         querySnapshot.forEach((doc) => {
           // console.log("USER DOC ID ::  ", doc.id);
@@ -155,12 +146,6 @@ export default function InvoiceListTable(props) {
 
   //-------------------DELETE----------------
   const handleDelete = (value) => {
-    // setConfirmDialog({
-    //   ...confirmDialog,
-    //   isOpen: false,
-    // });
-
-    // userChageStatus(value, false)
 
     let deletionVal = value;
 
@@ -171,13 +156,13 @@ export default function InvoiceListTable(props) {
 
     try {
       const databaseFld = firebase.firestore();
-      let docRef = databaseFld.collection("item-list")
-      docRef = docRef.where("itemName", "==", deletionVal);
+      let docRef = databaseFld.collection("scratch-list")
+      docRef = docRef.where("discountPersent", "==", deletionVal);
       docRef.get().then((querySnapshot) => {
         querySnapshot.forEach((doc) => {
           // console.log("USER DOC ID ::  ", doc.id);
-          databaseFld.collection("item-list").doc(doc.id).delete().then(() => {
-            // console.log("Document successfully deleted!");
+          databaseFld.collection("scratch-list").doc(doc.id).delete().then(() => {
+            console.log("Document successfully deleted!");
             fetchUserData();
           }).catch((error) => {
             console.error("Error removing document: ", error);
@@ -201,9 +186,9 @@ export default function InvoiceListTable(props) {
   const filterByValue = (array, value) =>
     array.filter(
       (data) =>
-        data.clientName.toLowerCase().includes(value.toLowerCase()) ||
-        data.clientContact.toLowerCase().includes(value.toLowerCase()) ||
-        data.tableName.toLowerCase().includes(value.toLowerCase())
+        data.fromAmmount.toLowerCase().includes(value.toLowerCase()) ||
+        data.toAmmount.toLowerCase().includes(value.toLowerCase()) ||
+        data.discountPersent.toLowerCase().includes(value.toLowerCase())
     );
 
   const setSearch = (e) => {
@@ -310,14 +295,14 @@ export default function InvoiceListTable(props) {
               </CardContent>
             </Card>
 
-            {/* <Button
+            <Button
               color="primary"
               variant="contained"
               onClick={handleUserForm}
             >
               <PersonAddIcon style={{ marginRight: "5px" }} />
               <span>{"Add"}</span>
-            </Button> */}
+            </Button>
           </Flex>
 
           <Box mt={3} mb={3}>
@@ -375,43 +360,40 @@ export default function InvoiceListTable(props) {
                     <Table className={classes.table}>
                       <TableHead>
                         <TableRow>
-                          <TableCell className={"txtleft"}>{"Name"}</TableCell>
-                          <TableCell className={"txtleft"}>{"Contact"}</TableCell>
-                          <TableCell className={"txtleft"}>{"Date"}</TableCell>
-                          <TableCell className={"txtleft"}>{"Table No."}</TableCell>
+                          <TableCell className={"txtleft"}>{"Sr No."}</TableCell>
+                          <TableCell className={"txtleft"}>{"From"}</TableCell>
+                          <TableCell className={"txtleft"}>{"To"}</TableCell>
+                          <TableCell className={"txtleft"}>{"Discount (%)"}</TableCell>
+                          <TableCell></TableCell>
                           <TableCell></TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {myArray.map((data, index) => (
+                        {myArray.map((product, index) => (
+                          // console.log("PRODU :: ", product),
                           <TableRow
                             hover
-                            key={index}
                           >
-                            <TableCell
-                              align={"left"}
-                              className={classes.active}
-                            >
-                              {data.clientName}
+                            <TableCell align="left">
+                              {index + 1}
                             </TableCell>
                             <TableCell
                               align={"left"}
                               className={classes.active}
                             >
-                              {data.clientContact}
+                              {product.fromAmmount}
                             </TableCell>
                             <TableCell
                               align={"left"}
                               className={classes.active}
                             >
-                              {moment(new Date(data.order_date)).format('DD/MM/YYYY')}
+                              {product.toAmmount}
                             </TableCell>
-
                             <TableCell
                               align={"left"}
                               className={classes.active}
                             >
-                              {data.tableName}
+                              {product.discountPersent}
                             </TableCell>
 
                             <TableCell
@@ -422,19 +404,42 @@ export default function InvoiceListTable(props) {
                               <LightTooltip
                                 className={classes.tooltip}
                                 TransitionComponent={Zoom}
-                                title={"Generate Invoice"}
+                                title={"Edit User"}
                               >
-                                <Button
+                                <EditIcon
+                                  onClick={() => editThisFeed(product.discountPersent, product)}
                                   variant="contained"
-                                  className="btnInvoice"
-                                  onClick={() => editThisFeed(data.clientName, data)}
-                                >
-                                  {'Invoice'}
-                                </Button>
+                                  size="sm"
+                                  style={{ color: "#20382b" }}
+                                />
                               </LightTooltip>
                             </TableCell>
 
-                            
+                            <TableCell align={"left"}>
+                              <LightTooltip
+                                TransitionComponent={Zoom}
+                                title={"Delete User"}
+                              >
+                                <DeleteIcon
+                                  color="primary"
+                                  variant="contained"
+                                  onClick={() =>
+                                    setConfirmDialog({
+                                      isOpen: true,
+                                      title:
+                                        "are you sure you want to delete this item ?",
+                                      subTitle:
+                                        "once deleted you cant undo this action",
+                                      onConfirm: () => {
+                                        handleDelete(product.discountPersent);
+                                      },
+                                    })
+                                  }
+                                ></DeleteIcon>
+                              </LightTooltip>
+                            </TableCell>
+
+
                           </TableRow>
                         ))}
                       </TableBody>
@@ -459,10 +464,10 @@ export default function InvoiceListTable(props) {
         </Container>
       )}
 
-      {detailForm && !currentUserId ? <AddInvoice /> : ""}
+      {detailForm && !currentUserId ? <AddScratch /> : ""}
 
       {currentUserId && detailForm ? (
-        <AddInvoice currentUserId={currentUserId} orderDetails={listData} />
+        <AddScratch currentUserId={currentUserId} dataDetails={listData} />
       ) : (
         ""
       )}

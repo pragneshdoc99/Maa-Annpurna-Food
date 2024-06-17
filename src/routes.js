@@ -19,6 +19,7 @@ import OrderList from "views/admin/OrderList";
 import InvoiceList from "views/admin/InvoiceList";
 import MenuList from "views/admin/MenuList";
 import TableList from "views/admin/TableList";
+import ScratchList from "views/admin/ScratchList";
 import UserList from "views/admin/UserList";
 // import RTL from "views/admin/rtl";
 
@@ -77,7 +78,13 @@ const routes = [
     path: "/table-list",
     component: TableList,
   },
-
+  {
+    name: "Scratch List",
+    layout: "/admin",
+    icon: <Icon as={MdBarChart} width='20px' height='20px' color='inherit' />,
+    path: "/scratch-list",
+    component: ScratchList,
+  },
   {
     name: "User List",
     layout: "/admin",

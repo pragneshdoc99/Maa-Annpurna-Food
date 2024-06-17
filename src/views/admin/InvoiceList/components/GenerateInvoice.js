@@ -15,6 +15,7 @@ import logodownload from "../../../../assets/img/layout/logoWhite.png"
 import moment from "moment";
 
 import { Button, Container, Grid, TableFooter, TextField, Typography } from "@material-ui/core";
+import ScratchCardDialog from './ScratchCardDialog';
 
 // import "./styles.css"
 
@@ -81,7 +82,7 @@ let firestoreData = firebase.firestore();
 
 let tempDataArray = [];
 
-let lineStatus = ""
+let lineStatus = "";
 
 
 export default function GenerateInvoice({ selectedDocId, orderDetailsData }) {
@@ -94,11 +95,26 @@ export default function GenerateInvoice({ selectedDocId, orderDetailsData }) {
 
   let [finalList, setFinalList] = useState([]);
   const [totalCost, setTotalCost] = useState(0);
+  const [openScratch, setOpenScratch] = useState(false);
+  const [discountValue, setDiscountValue] = useState(0);
+
+  let [userScratchedData, setUserScratchedData] = useState({});
+  let [isScratchedCard, setIsScratchedCard] = useState();
+
+  const [disTotalCost, setDisTotalCost] = useState(0);
+  const [discountPersent, setDiscountPersent] = useState(0);
+  const [discountAmmount, setDiscountAmmount] = useState(0);
+
 
   useEffect(
     () => {
 
+      console.log('orderDetailsData :: ', orderDetailsData);
+
       setBasicDetails(orderDetailsData)
+      setDisTotalCost(orderDetailsData.fullOrderAmmount)
+      setDiscountPersent(orderDetailsData.discountPersent)
+      setDiscountAmmount(orderDetailsData.discountAmmount)
 
       tempDataArray = []
       orderDetailsData.itemList.map((val, index) => {
@@ -115,9 +131,51 @@ export default function GenerateInvoice({ selectedDocId, orderDetailsData }) {
 
       lineStatus = 'JAMA';
 
+      getScratchData();
+      getUserScratchData();
+
     },
     []
   );
+
+
+  const getScratchData = () => {
+
+    let billAmmount = parseFloat(orderDetailsData.orderTotalAmmount);
+
+    const database = firebase.firestore();
+    let tempDb = database.collection('scratch-list');
+    tempDb.get().then(function (dataSnap) {
+
+      dataSnap.forEach(function (doc) {
+        let docData = doc.data();
+
+        if (docData.fromAmmount <= billAmmount && billAmmount <= docData.toAmmount) {
+
+          setDiscountValue(docData.discountPersent)
+
+        }
+      });
+    });
+
+  }
+
+  const getUserScratchData = () => {
+
+    const database = firebase.firestore();
+    let tempDb = database.collection('user-scratched-offer-list');
+    tempDb = tempDb.where("invoiceNo", "==", orderDetailsData.invoiceNo);
+    tempDb.get().then(function (dataSnap) {
+      dataSnap.forEach(function (doc) {
+        let docData = doc.data();
+        console.log("docData :: ", docData);
+        setUserScratchedData(docData)
+        setIsScratchedCard(docData.isScratched)
+      })
+
+    })
+
+  }
 
 
 
@@ -148,130 +206,185 @@ export default function GenerateInvoice({ selectedDocId, orderDetailsData }) {
 
 
 
+  const handleOpenCoupon = () => {
+    setOpenScratch(true)
+  }
+
+  const handleClose = () => {
+    setOpenScratch(false);
+  };
+
+
 
 
   return (
-    <Container maxWidth="lg">
-      {/* <h2 style={{ textAlign: "center" }}>Invoice</h2> */}
+    <div>
+      <Container maxWidth="lg">
+        {/* <h2 style={{ textAlign: "center" }}>Invoice</h2> */}
 
-      <Grid container sm={12} md={12} direction="column">
+        <Grid container sm={12} md={12} direction="column">
 
-        <Grid
-          item
-          sm={12}
-          md={12}
-          lg={12}
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            alignItems: "center"
-          }}
-        >
-          {/* <Button variant='contained' onClick={() => saveRateData()}>
-            Save
-          </Button> */}
-          <Button variant='contained' style={{ marginLeft: '5px' }} onClick={() => handleDownloadRateSheet()}>
-            Download
-          </Button>
-        </Grid>
+          <Grid
+            item
+            sm={12}
+            md={12}
+            lg={12}
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center"
+            }}
+          >
+            {!isScratchedCard &&
+              <Button variant='contained' onClick={() => handleOpenCoupon()}>
+                Coupon
+              </Button>
+            }
+            <Button variant='contained' style={{ marginLeft: '5px' }} onClick={() => handleDownloadRateSheet()}>
+              Download
+            </Button>
+          </Grid>
 
 
-        <Grid
-          item
-          sm={12}
-          md={12}
-          style={{
-            display: 'block',
-            margin: '40px'
-          }}
-        >
-          <Table id='RateTbl' className={classes.table} aria-label="customized table">
-            <TableHead>
-              <TableRow>
-                <StyledTableCell colSpan={8} style={{ backgroundColor: "transparent" }} align="center">
-                  <img src={logodownload} alt='' style={tablelogoimg} />
-                  <Typography variant='h5' style={{
-                    color: "#000077",
-                    fontFamily: ['Montserrat', 'sans-serif'].join(','),
-                    fontWeight: 800
-                  }}>Maa Annapurna Foods & Catering</Typography>
+          <Grid
+            item
+            sm={12}
+            md={12}
+            style={{
+              display: 'block',
+              margin: '40px'
+            }}
+          >
+            <Table id='RateTbl' className={classes.table} aria-label="customized table">
+              <TableHead>
+                <TableRow>
+                  <StyledTableCell colSpan={8} style={{ backgroundColor: "transparent" }} align="center">
+                    <img src={logodownload} alt='' style={tablelogoimg} />
+                    <Typography variant='h5' style={{
+                      color: "#000077",
+                      fontFamily: ['Montserrat', 'sans-serif'].join(','),
+                      fontWeight: 800
+                    }}>Maa Annapurna Foods & Catering</Typography>
 
-                  <div style={{ display: 'flex', alignItems: "center", justifyContent: "center" }}>
-                    {/* <p style={{ fontSize: "16px", fontWeight: 500, margin: "12px", color: '#000077' }}>{'GST No. :: ' + '24AAQFN5101M1Z4'}</p> */}
-                    <p style={{ fontSize: "16px", fontWeight: 500, margin: "12px", color: '#000077' }}>{'Contact No. :: ' + '+91 74050 57277'}</p>
-                    {/* <p style={{ fontSize: "16px", fontWeight: 500, margin: "12px", color: '#000077' }}>{', ' + '+91 82388 88809'}</p> */}
-                  </div>
+                    <div style={{ display: 'flex', alignItems: "center", justifyContent: "center" }}>
+                      {/* <p style={{ fontSize: "16px", fontWeight: 500, margin: "12px", color: '#000077' }}>{'GST No. :: ' + '24AAQFN5101M1Z4'}</p> */}
+                      <p style={{ fontSize: "16px", fontWeight: 500, margin: "12px", color: '#000077' }}>{'Contact No. :: ' + '+91 74050 57277'}</p>
+                      {/* <p style={{ fontSize: "16px", fontWeight: 500, margin: "12px", color: '#000077' }}>{', ' + '+91 82388 88809'}</p> */}
+                    </div>
 
-                  <div style={{ display: 'flex', alignItems: "center", justifyContent: "center" }}>
-                    <p style={{ fontSize: "14px", fontWeight: 600, margin: "13px", color: '#000077' }}>{'Address :: ' + 'C24, Naxatra View Apt, Neae. L P Savani School, Palanpore Gaam, Surat. '}</p>
-                  </div>
-                </StyledTableCell>
-              </TableRow>
-              <TableRow>
-                <StyledTableCell colSpan={8} style={{ backgroundColor: "transparent" }} align="center">
-                  <div style={{ display: 'flex', alignItems: "center", justifyContent: "center" }}>
-                    <p style={{ fontSize: "15px", margin: "13px", color: '#000000' }}>{'Invoice No. :: ' + basicDetails.invoiceNo}</p>
-                    <p style={{ fontSize: "15px", margin: "13px", color: '#000000' }}>{'Name :: ' + basicDetails.clientName}</p>
-                    <p style={{ fontSize: "15px", margin: "13px", color: '#000000' }}>{'Contact No. :: ' + basicDetails.clientContact}</p>
-                    <p style={{ fontSize: "15px", margin: "13px", color: '#000000' }}>{'Date :: ' + new Date(basicDetails.order_date).toDateString()}</p>
-                  </div>
-                </StyledTableCell>
-              </TableRow>
-              <TableRow>
-                <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}>Sr No</StyledTableCell>
-                <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}>Item</StyledTableCell>
-                <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}>Type</StyledTableCell>
-                <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}>QTY</StyledTableCell>
-                <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}>Rate</StyledTableCell>
-                <StyledTableCell align="right" style={{ backgroundColor: "#000077" }}>Total</StyledTableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {finalList.map((row, index) => (
-                <StyledTableRow key={index}>
-                  <StyledTableCell component="th" scope="row" align="left">
-                    {index + 1}
+                    <div style={{ display: 'flex', alignItems: "center", justifyContent: "center" }}>
+                      <p style={{ fontSize: "14px", fontWeight: 600, margin: "13px", color: '#000077' }}>{'Address :: ' + 'C24, Naxatra View Apt, Neae. L P Savani School, Palanpore Gaam, Surat. '}</p>
+                    </div>
                   </StyledTableCell>
-                  <StyledTableCell align="left">{row.itemName}</StyledTableCell>
-                  <StyledTableCell align="left">{row.itemType}</StyledTableCell>
-                  <StyledTableCell align="left">{row.productQty}</StyledTableCell>
-                  <StyledTableCell align="left">{row.productPrice}</StyledTableCell>
-                  <StyledTableCell align="right">{row.totalItemPrice}</StyledTableCell>
-                </StyledTableRow>
-              ))}
-            </TableBody>
-            <TableHead>
-              <TableRow>
-                <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}>Total</StyledTableCell>
-                <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}></StyledTableCell>
-                <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}></StyledTableCell>
-                <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}></StyledTableCell>
-                <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}></StyledTableCell>
-                <StyledTableCell align="right" style={{ backgroundColor: "#000077" }}>{totalCost}</StyledTableCell>
-              </TableRow>
-            </TableHead>
+                </TableRow>
+                <TableRow>
+                  <StyledTableCell colSpan={8} style={{ backgroundColor: "transparent" }} align="center">
+                    <div style={{ display: 'flex', alignItems: "center", justifyContent: "center" }}>
+                      <p style={{ fontSize: "15px", margin: "13px", color: '#000000' }}>{'Invoice No. :: ' + basicDetails.invoiceNo}</p>
+                      <p style={{ fontSize: "15px", margin: "13px", color: '#000000' }}>{'Name :: ' + basicDetails.clientName}</p>
+                      <p style={{ fontSize: "15px", margin: "13px", color: '#000000' }}>{'Contact No. :: ' + basicDetails.clientContact}</p>
+                      <p style={{ fontSize: "15px", margin: "13px", color: '#000000' }}>{'Date :: ' + new Date(basicDetails.order_date).toDateString()}</p>
+                    </div>
+                  </StyledTableCell>
+                </TableRow>
+                <TableRow>
+                  <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}>Sr No</StyledTableCell>
+                  <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}>Item</StyledTableCell>
+                  <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}>Type</StyledTableCell>
+                  <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}>QTY</StyledTableCell>
+                  <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}>Rate</StyledTableCell>
+                  <StyledTableCell align="right" style={{ backgroundColor: "#000077" }}>Total</StyledTableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {finalList.map((row, index) => (
+                  <StyledTableRow key={index}>
+                    <StyledTableCell component="th" scope="row" align="left">
+                      {index + 1}
+                    </StyledTableCell>
+                    <StyledTableCell align="left">{row.itemName}</StyledTableCell>
+                    <StyledTableCell align="left">{row.itemType}</StyledTableCell>
+                    <StyledTableCell align="left">{row.productQty}</StyledTableCell>
+                    <StyledTableCell align="left">{row.productPrice}</StyledTableCell>
+                    <StyledTableCell align="right">{row.totalItemPrice}</StyledTableCell>
+                  </StyledTableRow>
+                ))}
+              </TableBody>
+              {disTotalCost &&
+                <TableHead>
+                  <TableRow>
+                    <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}>Total</StyledTableCell>
+                    <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}></StyledTableCell>
+                    <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}></StyledTableCell>
+                    <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}></StyledTableCell>
+                    <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}></StyledTableCell>
+                    <StyledTableCell align="right" style={{ backgroundColor: "#000077" }}>{disTotalCost}</StyledTableCell>
+                  </TableRow>
 
-            <TableHead>
-              <TableRow>
-                <StyledTableCell colSpan={8} style={{ backgroundColor: "transparent" }} align="center">
-                  <div style={{ display: 'flex', alignItems: "center", justifyContent: "center" }}>
+                </TableHead>
+              }
 
-                    {lineStatus === 'JAMA' &&
-                      <p style={{ fontSize: "22px", margin: "15px", color: '#27a727' }}>{'PAID'}</p>
-                    }
+              {discountPersent &&
+                <TableHead>
+                  <TableRow>
+                    <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}>Discount</StyledTableCell>
+                    <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}></StyledTableCell>
+                    <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}></StyledTableCell>
+                    <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}></StyledTableCell>
+                    <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}>{discountPersent + "%"}</StyledTableCell>
+                    <StyledTableCell align="right" style={{ backgroundColor: "#000077" }}>{discountAmmount}</StyledTableCell>
+                  </TableRow>
 
-                    {lineStatus === 'BAKI' &&
-                      <p style={{ fontSize: "22px", margin: "15px", color: '#a72727' }}>{'REST'}</p>
-                    }
-                  </div>
-                </StyledTableCell>
-              </TableRow>
-            </TableHead>
-          </Table>
+                </TableHead>
+              }
 
+              <TableHead>
+                <TableRow>
+                  <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}>Total Ammount</StyledTableCell>
+                  <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}></StyledTableCell>
+                  <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}></StyledTableCell>
+                  <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}></StyledTableCell>
+                  <StyledTableCell align="left" style={{ backgroundColor: "#000077" }}></StyledTableCell>
+                  <StyledTableCell align="right" style={{ backgroundColor: "#000077" }}>{totalCost}</StyledTableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableHead>
+                <TableRow>
+                  <StyledTableCell colSpan={8} style={{ backgroundColor: "transparent" }} align="center">
+                    <div style={{ display: 'flex', alignItems: "center", justifyContent: "center" }}>
+
+                      {lineStatus === 'JAMA' &&
+                        <p style={{ fontSize: "22px", margin: "15px", color: '#27a727' }}>{'PAID'}</p>
+                      }
+
+                      {lineStatus === 'BAKI' &&
+                        <p style={{ fontSize: "22px", margin: "15px", color: '#a72727' }}>{'REST'}</p>
+                      }
+
+                    </div>
+                  </StyledTableCell>
+
+                </TableRow>
+
+                {isScratchedCard &&
+                  <TableRow>
+                    <StyledTableCell colSpan={8} style={{ backgroundColor: "transparent" }} align="center">
+                      <div style={{ display: 'flex', alignItems: "center", justifyContent: "center" }}>
+                        <p style={{ fontSize: "17px", fontWeight: 600, margin: "10px", color: '#27a727' }}>{"Congratulations !! You've unlocked a "}{userScratchedData.discountPersent}{"% discount on your next order.."}</p>
+                      </div>
+                    </StyledTableCell>
+                  </TableRow>
+                }
+              </TableHead>
+            </Table>
+
+          </Grid>
         </Grid>
-      </Grid>
-
-    </Container>
+      </Container>
+      {openScratch &&
+        <ScratchCardDialog open={openScratch} onClose={handleClose} discountPersent={discountValue} orderDetailsData={orderDetailsData} />
+      }
+    </div>
   );
 }
